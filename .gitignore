@@ -1,0 +1,56 @@
+.env
+.pyenv.cfg
+.venv
+.penv 
+.menv
+.pptm
+.pdf
+.csv
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+menv/
+genv/
+penv/
+lenv/
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python package build
+build/
+dist/
+*.egg-info/
+
+# Environment variables
+.env
+
+# Jupyter runtime
+~$*
