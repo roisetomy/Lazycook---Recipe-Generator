@@ -12,7 +12,7 @@ class Recipe(BaseModel):
 
 class ReviewResult(BaseModel):
     approved: bool
-    missing_ingredients: List[str]
+    ingredients_to_buy: List[str]
 
 def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     # ... (Implementation of get_keywords)
@@ -117,30 +117,30 @@ def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, url
             "role": "system",
             "content": """You are a helpful recipe reviewer assistant.
 
-    Your task is to review the newly generated recipe against the user's original question and the ingredients they have at home.
+    Your task is to review a newly generated recipe based on the user's original request. Your primary focus is to determine if the recipe is a logical and sensible answer to the user's question.
 
-    Based on the recipe ingredients, check if all ingredients are available in the user's list.
+    You will also identify which recipe ingredients the user would need to acquire.
 
     Return a JSON object ONLY with the following fields:
 
     {
     "approved": true or false,
-    "missing_ingredients": [list of missing ingredient names, empty if none]
+    "ingredients_to_buy": [list of ingredient names to buy, empty if none]
     }
 
-    - "approved" is true if the recipe makes sense and kind of matches the users question.
-    - "missing_ingredients" lists any ingredients required by the recipe that the user does not have.
+    - "approved" should be true if the recipe is a sensible and relevant response to the user's question. For example, if the user asks for a breakfast recipe, the recipe should be for a breakfast dish.
+    - "ingredients_to_buy" lists any ingredients that are required by the recipe but are NOT in the user's list of available ingredients.
     - Do NOT include any explanations or extra text, only the JSON.
 
     Example input:
-    User question: I want to cook something Italian.
-    User ingredients: ["pasta", "garlic", "olive oil"]
-    Recipe: ["title": "Pasta with Garlic and Olive Oil", "ingredients": ["pasta", "garlic", "olive oil", "parsley"], "directions": ["Cook pasta", "Sauté garlic", "Mix with olive oil and parsley"]}
+    User question: I want to cook something Italian for dinner.
+    User ingredients: ["pasta", "garlic", "olive oil", "salt", "pepper"]
+    Recipe: {"title": "Pasta Aglio e Olio", "ingredients": ["pasta", "garlic", "olive oil", "red pepper flakes", "parsley", "salt", "pepper"], "directions": ["Cook pasta.", "Gently sauté garlic in olive oil.", "Toss pasta with the garlic oil, red pepper flakes, and fresh parsley."]}
 
     Expected output:
     {
-    "approved": false,
-    "missing_ingredients": ["tomato sauce", "basil"]
+    "approved": true,
+    "ingredients_to_buy": ["red pepper flakes", "parsley"]
     }
     """
             },
@@ -174,4 +174,4 @@ def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, url
     except ValidationError as e:
         print("❌ Failed to parse review JSON:", e)
         print("Raw JSON content was:", json_part)
-    return review.approved, review.missing_ingredients
+    return review.approved, review.ingredients_to_buy

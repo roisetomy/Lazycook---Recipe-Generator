@@ -13,7 +13,7 @@ LLM_API_URL = "http://localhost:1234/v1/chat/completions"
 IMAGE_API_URL = "http://localhost:7860/sdapi/v1/txt2img"
 
 # --- File Paths ---
-RECIPE_DATASET_PATH = "data/1000000recipes.csv"
+RECIPE_DATASET_PATH = "data/100recipes.csv"
 RECIPE_EMBEDDING_PATH = "data/recipe_embedding.pt"
 
 # --- Retrieval and Generation Parameters ---

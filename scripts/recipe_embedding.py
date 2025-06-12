@@ -18,7 +18,7 @@ def recipe_embedding():
     print(f"Generated embeddings for {len(df)} recipes.")
     
     # Prepare output path
-    embeddings_path = os.path.join("data", "recipe_embedding.pt")
+    embeddings_path = os.path.join(config.RECIPE_EMBEDDING_PATH)
     os.makedirs("data", exist_ok=True)
 
     
