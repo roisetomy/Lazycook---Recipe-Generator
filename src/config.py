@@ -14,6 +14,7 @@ IMAGE_API_URL = "http://localhost:7860/sdapi/v1/txt2img"
 
 # --- File Paths ---
 RECIPE_DATASET_PATH = "data/1000000recipes.csv"
+RECIPE_EMBEDDING_PATH = "data/recipe_embedding.pt"
 
 # --- Retrieval and Generation Parameters ---
 TOP_K_RECIPES = 3
