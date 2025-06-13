@@ -53,7 +53,6 @@ def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     return q_ext
 
 def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict], url: str, model: str) -> Recipe:
-    # ... (Implementation of recipe creation)
     # Set up API call
     url = config.LLM_API_URL
     headers = {"Content-Type": "application/json"}
@@ -73,6 +72,8 @@ def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict
     "ingredients": ["..."],
     "directions": ["..."]
     }
+
+    The JSON must be properly formatted with no trailing commas.
     """
             },
             {
@@ -98,15 +99,26 @@ def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict
             parsed = json.loads(raw_json)
             recipe = Recipe(**parsed)
             print("\n✅ Structured recipe:")
+            return recipe
         except (json.JSONDecodeError, ValidationError) as e:
             print("❌ Error parsing or validating the recipe:\n", e)
+            # Return a default recipe when parsing fails
+            return Recipe(
+                title="Error: Could not generate recipe",
+                ingredients=["Please try again with different ingredients or question"],
+                directions=["An error occurred while generating the recipe. Please try again."]
+            )
     else:
         print("❌ Could not find JSON block after </think>.")
-    return recipe
+        # Return a default recipe when no JSON is found
+        return Recipe(
+            title="Error: Could not generate recipe",
+            ingredients=["Please try again with different ingredients or question"],
+            directions=["An error occurred while generating the recipe. Please try again."]
+        )
 
 
 def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, url: str, model: str) -> ReviewResult:
-    # ... (Implementation of recipe review)
     url = config.LLM_API_URL
     headers = {"Content-Type": "application/json"}
 
