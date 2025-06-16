@@ -2,6 +2,7 @@ import streamlit as st
 import sys
 import os
 import warnings
+from pinecone import Pinecone
 
 # Suppress warnings
 warnings.filterwarnings('ignore', message='.*no running event loop.*')
@@ -19,6 +20,13 @@ from scripts.pipelines import image_pipeline, generate_validated_recipe
 def main():
     st.title("LazyCook Recipe Generator")
     
+    # Initialize Pinecone
+    pc = Pinecone(api_key=config.PINECONE_API_KEY)
+    index = pc.Index("lazycook")
+    
+    # Load CLIP model
+    model, processor = load_clip_model(config.CLIP_MODEL, config.DEVICE)
+    
     # User inputs
     question = st.text_input("What kind of recipe are you looking for?", 
                            placeholder="E.g., a healthy breakfast, quick dinner, vegetarian meal...")
@@ -29,8 +37,7 @@ def main():
     if st.button("Generate Recipe"):
         if question and ingredients:
             with st.spinner("Searching for recipes..."):
-                combined_query = f"{question} {ingredients}"
-                recipes = search_recipes(combined_query, top_k=3)
+                recipes = search_recipes(question, ingredients, index=index, top_k=3)
             
             with st.spinner("Generating your perfect recipe..."):
                 recipe = generate_validated_recipe(question, ingredients, recipes, config)
@@ -48,12 +55,14 @@ def main():
             
             # Generate image
             with st.spinner("Creating a delicious image for your recipe..."):
-                model, processor = load_clip_model(config.CLIP_MODEL, config.DEVICE)
-                best_image = image_pipeline(f"{recipe.title} with {', '.join(recipe.ingredients)}", 
-                                         config, model, processor)
-                st.image(best_image, caption=recipe.title)
+                image = image_pipeline(f"{recipe.title} with {', '.join(recipe.ingredients)}", 
+                                    config, model, processor)
+                if image:
+                    st.image(image, caption=recipe.title)
+                else:
+                    st.warning("Could not generate an image for this recipe.")
         else:
-            st.warning("Please provide both a recipe type and ingredients!")
+            st.warning("Please provide both a question and ingredients.")
 
 if __name__ == "__main__":
     main()
