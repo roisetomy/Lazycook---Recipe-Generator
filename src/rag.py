@@ -3,65 +3,54 @@ from .data_processing import load_and_preprocess_data
 from . import config
 from .embedding_utils import load_embedding_model
 from .llm_interaction import get_keywords_from_llm
-import torch
+from pinecone import Pinecone
+import numpy as np
 
-# Global variables to cache loaded data
-_df = None
-_model_emb = None
-_texts = None
+# Load the embedding model globally
+_model_emb = load_embedding_model(config.EMBEDDING_MODEL, config.DEVICE)
 
-def _load_data_once():
-    """Load data only once and cache it"""
-    global _df, _model_emb, _texts
-    
-    if _df is None:
-        print("Loading data for the first time...")
-        _df = load_and_preprocess_data(config.RECIPE_DATASET_PATH)
-        _model_emb = load_embedding_model(config.EMBEDDING_MODEL, config.DEVICE)
-        _texts = torch.load(config.RECIPE_EMBEDDING_PATH, map_location=config.DEVICE)
-        print(f"Data loaded and cached! {_df.shape[0]} recipes, embedding shape: {_texts.shape}")
-    
-    return _df, _model_emb, _texts
-
-def search_recipes(query, top_k=3):
+def search_recipes(query: str, ingredients: str, index: Pinecone, top_k: int = 3) -> list:
     """
-    Search for recipes based on query (always uses LLM expansion)
-    
+    Search for recipes using Pinecone vector search with weighted query combination.
+
     Args:
-        query (str): Combined question and ingredients
+        query (str): The user's question about what they want to cook
+        ingredients (str): Available ingredients
+        index (Pinecone): Pinecone index instance
         top_k (int): Number of recipes to return
-    
+
     Returns:
-        list: List of recipe dictionaries
+        list: List of dictionaries with recipe info
     """
-    # Load cached data
-    df, model_emb, texts = _load_data_once()
-    
-    # Always get extended query from LLM
-    try:
-        q_ext = get_keywords_from_llm(query, config.LLM_API_URL, config.LLM_MODEL)
-        print(f"Extended query: {q_ext}")
-        combined_query = f"{query} {q_ext}"
-    except Exception as e:
-        print(f"LLM expansion failed: {e}. Using original query.")
-        combined_query = query
-    
-    # Encode the query
-    question_vec = model_emb.encode([combined_query], show_progress_bar=True)
-    question_vec = torch.tensor(question_vec, device=config.DEVICE)
-    
-    # Calculate similarities
-    similarities = torch.cosine_similarity(question_vec, texts, dim=1)
-    
-    # Get top k results
-    top_k_results = torch.topk(similarities, k=min(top_k, len(similarities)))
-    top_indices = top_k_results.indices.cpu().numpy()  # Convert to CPU for pandas
-    
-    # Get recipes
-    recipes = df.iloc[top_indices]
-    recipes = recipes[["title", "ingredients", "directions"]].reset_index(drop=True)
-    
-    # Convert to list of dictionaries
-    recipes_for_llm = recipes.to_dict(orient="records")
-    
+    # Step 1: Get enriched query using LLM
+    q_ext = get_keywords_from_llm(query, config.LLM_API_URL, config.LLM_MODEL)
+    query_text1 = query + " " + ingredients
+    query_text2 = q_ext
+
+    # Step 2: Embed both queries using the embedding model
+    query_vector1 = _model_emb.encode(query_text1, show_progress_bar=False).tolist()
+    query_vector2 = _model_emb.encode(query_text2, show_progress_bar=False).tolist()
+
+    # Step 3: Combine vectors with weights (70% original query, 30% enriched query)
+    query_vector = (0.7 * np.array(query_vector1) + 0.3 * np.array(query_vector2)).tolist()
+
+    # Step 4: Search Pinecone
+    results = index.query(
+        vector=query_vector,
+        top_k=top_k,
+        namespace="recipes-namespace",
+        include_metadata=True
+    )
+
+    # Step 5: Format results
+    recipes_for_llm = []
+    for match in results["matches"]:
+        metadata = match["metadata"]
+        recipes_for_llm.append({
+            "title": metadata.get("title", ""),
+            "ingredients": metadata.get("ingredients", ""),
+            "directions": metadata.get("directions", "")
+        })
+
     return recipes_for_llm
+

@@ -4,6 +4,7 @@ import re
 from pydantic import BaseModel, ValidationError
 from typing import List
 from src import config
+from google import genai
 
 class Recipe(BaseModel):
     title: str
@@ -13,6 +14,7 @@ class Recipe(BaseModel):
 class ReviewResult(BaseModel):
     approved: bool
     ingredients_to_buy: List[str]
+    explanation: str
 
 def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     # ... (Implementation of get_keywords)
@@ -52,36 +54,40 @@ def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     _, q_ext = raw_query.split('</think>\n\n')
     return q_ext
 
-def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict], url: str, model: str) -> Recipe:
+def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict], url: str, model: str, model_big: str, feedback: str = "") -> Recipe:
     # Set up API call
     url = config.LLM_API_URL
     headers = {"Content-Type": "application/json"}
+    
+    system_prompt = """You are a helpful recipe assistant. Your task is to provide a concise and relevant response based on the user's question and the ingredients they have at home.
+You should return a new recipe based on the user's question and the ingredients they have, using the top recipes from a dataset.
+Do not include any explanations or additional information, just the recipe details in valid JSON format.
+
+Return ONLY a JSON object in this format:
+{
+  "title": "...",
+  "ingredients": ["..."],
+  "directions": ["..."]
+}
+"""
+    model_to_use = model_big if feedback else model
+
+    if feedback:
+        system_prompt += f"\nThe last recipe was rejected for the following reason: {feedback}\nMake sure to correct this in your new recipe."
 
     data = {
-        "model": model,
+        "model": model_to_use,
         "messages": [
             {
                 "role": "system",
-                "content": """You are a helpful recipe assistant. Your task is to provide a concise and relevant response based on the user's question and the ingredients they have at home.
-    You should return a new recipe based on the user's question and the ingredients they have, using the top recipes from a dataset.
-    Do not include any explanations or additional information, just the recipe details in valid JSON format.
-
-    Start with <think> for reasoning. After </think>, return ONLY a JSON object in this format:
-    {
-    "title": "...",
-    "ingredients": ["..."],
-    "directions": ["..."]
-    }
-
-    The JSON must be properly formatted with no trailing commas.
-    """
+                "content": system_prompt
             },
             {
                 "role": "user",
                 "content": f"question: {question}, ingredients: {ingredients}, top recipes: {recipes}"
             }
         ],
-        "temperature": 0.1,
+        "temperature": 0.6,
         "max_tokens": 2048,
         "stream": False
     }
@@ -91,99 +97,71 @@ def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict
     content = response.json()["choices"][0]["message"]["content"]
     print("🔍 Raw model output:\n", content)
 
-    # Extract JSON after </think>
+    # Extract JSON after </think>, or fallback to parsing from full content
     match = re.search(r"</think>\s*(\{.*\})", content, re.DOTALL)
-    if match:
-        raw_json = match.group(1)
-        try:
-            parsed = json.loads(raw_json)
-            recipe = Recipe(**parsed)
-            print("\n✅ Structured recipe:")
-            return recipe
-        except (json.JSONDecodeError, ValidationError) as e:
-            print("❌ Error parsing or validating the recipe:\n", e)
-            # Return a default recipe when parsing fails
-            return Recipe(
-                title="Error: Could not generate recipe",
-                ingredients=["Please try again with different ingredients or question"],
-                directions=["An error occurred while generating the recipe. Please try again."]
-            )
-    else:
-        print("❌ Could not find JSON block after </think>.")
-        # Return a default recipe when no JSON is found
-        return Recipe(
-            title="Error: Could not generate recipe",
-            ingredients=["Please try again with different ingredients or question"],
-            directions=["An error occurred while generating the recipe. Please try again."]
-        )
-
-
-def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, url: str, model: str) -> ReviewResult:
-    url = config.LLM_API_URL
-    headers = {"Content-Type": "application/json"}
-
-    data = {
-        "model": model,
-    "messages": [
-        {
-            "role": "system",
-            "content": """You are a helpful recipe reviewer assistant.
-
-    Your task is to review a newly generated recipe based on the user's original request. Your primary focus is to determine if the recipe is a logical and sensible answer to the user's question.
-
-    You will also identify which recipe ingredients the user would need to acquire.
-
-    Return a JSON object ONLY with the following fields:
-
-    {
-    "approved": true or false,
-    "ingredients_to_buy": [list of ingredient names to buy, empty if none]
-    }
-
-    - "approved" should be true if the recipe is a sensible and relevant response to the user's question. For example, if the user asks for a breakfast recipe, the recipe should be for a breakfast dish.
-    - "ingredients_to_buy" lists any ingredients that are required by the recipe but are NOT in the user's list of available ingredients.
-    - Do NOT include any explanations or extra text, only the JSON.
-
-    Example input:
-    User question: I want to cook something Italian for dinner.
-    User ingredients: ["pasta", "garlic", "olive oil", "salt", "pepper"]
-    Recipe: {"title": "Pasta Aglio e Olio", "ingredients": ["pasta", "garlic", "olive oil", "red pepper flakes", "parsley", "salt", "pepper"], "directions": ["Cook pasta.", "Gently sauté garlic in olive oil.", "Toss pasta with the garlic oil, red pepper flakes, and fresh parsley."]}
-
-    Expected output:
-    {
-    "approved": true,
-    "ingredients_to_buy": ["red pepper flakes", "parsley"]
-    }
-    """
-            },
-            {
-                "role": "user",
-                "content": f"question: {question}, ingredients: {ingredients}, recipe: {recipe}"
-            }
-        ],
-        "temperature": 0.1,
-        "max_tokens": 2048,
-        "stream": False
-    }
-
-    # Call model
-    response = requests.post(url, headers=headers, json=data)
-    content = response.json()["choices"][0]["message"]["content"]
-
-    print("🔍 Raw model output:\n", content)
-
-    # Extract JSON after optional <think> block if present
-    if "<think>" in content:
-        _, json_part = content.split("</think>", 1)
-    else:
-        json_part = content
-
-    json_part = json_part.strip()
+    json_block = match.group(1) if match else content.strip()
 
     try:
-        review = ReviewResult.parse_raw(json_part)
-        print("✅ Parsed review result:")
-    except ValidationError as e:
-        print("❌ Failed to parse review JSON:", e)
-        print("Raw JSON content was:", json_part)
-    return review.approved, review.ingredients_to_buy
+        parsed = json.loads(json_block)
+        recipe = Recipe(**parsed)
+        print("\n✅ Structured recipe:")
+        print(recipe)
+        return recipe
+    except (json.JSONDecodeError, ValidationError) as e:
+        print("❌ Error parsing or validating the recipe:\n", e)
+        print("🔍 Raw model output:\n", content)
+        raise ValueError("Invalid recipe format")
+##
+# Define the expected structure of the model's output
+
+# Set up the Gemini client
+
+# Function to review a recipe
+def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, model: str = "gemini-1.5-flash") -> ReviewResult:
+
+    client = genai.Client(api_key=config.GOOGLE_API_KEY)
+
+    prompt = f"""
+You are a helpful recipe reviewer assistant.
+
+Your task is to critically assess a newly generated recipe based on the user's original cooking request and the ingredients they currently have at home.
+
+Your responsibilities are:
+1. Determine whether the recipe logically and sensibly satisfies the user's request.
+2. Check for any violations of dietary preferences, allergies, or other user-stated constraints.
+3. Identify which ingredients the user needs to buy to make the recipe, based on the ingredients they already have.
+4. Provide a clear and constructive explanation that will help a recipe-generation assistant revise the recipe in the next step.
+
+Return a JSON object ONLY with the following structure:
+
+{{
+  "approved": true or false,
+  "ingredients_to_buy": [list of missing ingredients, empty if none],
+  "explanation": A detailed and actionable explanation for improving the recipe.
+}}
+
+Explanation Guidelines:
+- If the recipe violates user constraints, clearly state what those violations are and how to fix them.
+- Offer suggestions such as: "remove ingredient X", "substitute ingredient Y", or "adjust cooking method Z".
+- If the recipe is suitable but can be improved (e.g. it's bland, too complex, or inconsistent), note that too.
+- This explanation is meant to guide another assistant model that will revise the recipe accordingly.
+
+User question: {question}
+User ingredients: {ingredients}
+Recipe: {recipe}
+"""
+
+
+    # Call the Gemini model with structured response
+    response = client.models.generate_content(
+        model= model,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": ReviewResult,
+        },
+    )
+
+    # Get parsed response directly as a typed Pydantic object
+    review_result: ReviewResult = response.parsed
+    return review_result

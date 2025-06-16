@@ -53,8 +53,8 @@ def create_image_from_prompt(prompt: str, url: str) -> Image.Image:
         "cfg_scale": 7,
         "width": 1024,
         "height": 512,
-        "sampler_name": "Euler a",  # or "DPM++ 2M Karras", etc.
-        "seed": -1  # -1 means random
+        "sampler_name": "Euler a",  # "DPM++ 2M Karras"
+        "seed": -1 
     }
 
     response = requests.post(url, json=payload)
