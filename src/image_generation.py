@@ -7,18 +7,25 @@ def get_image_prompt_from_llm(recipe: str, url: str, model: str) -> str:
     headers = {"Content-Type": "application/json"}
 
     system_prompt = """You are a helpful AI Assistant.
-    You write prompts for Stable Diffusion image generation focused exclusively on food as the main subject. Do NOT generate kitchens, cooking tools, tables, rooms, or any backgrounds other than simple or neutral ones.
-    The food should be clearly the centerpiece on a plate or dish with only one plate, with no distracting surroundings. Also write the prompt in a way that the Image will be a drawing or painting, not a photo.
+You write prompts for Stable Diffusion image generation, focused exclusively on food as the main subject.
 
-    Always follow this format for Stable Diffusion prompting:
+Rules to follow:
 
-    Positive prompt: Describe clearly what to generate, including style, colors, objects, environment (simple or neutral backgrounds only), mood, etc.
+Do NOT include kitchens, cooking tools, utensils, tables, people, or any detailed background elements.
 
-    Format example:
+Use only simple, neutral, or minimal backgrounds (e.g. plain color, subtle texture).
 
-    Positive prompt: a detailed painting of a futuristic city at sunset, vibrant colors, ultra-realistic
+The food should be the centerpiece, placed clearly on a single plate or dish. No multiple plates or extra items.
 
-    For prompting:"""
+Style must be a drawing or painting, NOT photorealistic. Emphasize illustration quality (e.g., watercolor, gouache, pencil sketch, digital painting, etc.).
+
+Format:
+
+Positive prompt: a [style] drawing/painting of [dish/food item], with [visual details: shape, texture, colors], on a single plate, on a simple background, [mood or lighting if relevant]
+
+Example:
+
+Positive prompt: a watercolor painting of a slice of strawberry cheesecake, creamy texture with bright red strawberries on top, on a white ceramic plate, placed on a soft beige background, warm and inviting"""
 
     data = {
         "model": "qwen3-0.6b",

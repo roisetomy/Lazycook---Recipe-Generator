@@ -8,7 +8,7 @@ from pinecone import Pinecone
 
 
 def recipe_embedding():
-    print("🔄 Running embedding and upsert...")
+    print("Running embedding and upsert...")
 
     # Load and preprocess data
     df = load_and_preprocess_data(config.RECIPE_DATASET_PATH)
@@ -17,7 +17,7 @@ def recipe_embedding():
     model = load_embedding_model(config.EMBEDDING_MODEL, config.DEVICE)
     embeddings = generate_embeddings(model, df.full_text.tolist(), device=config.DEVICE)
 
-    print(f"✅ Generated embeddings for {len(df)} recipes.")
+    print(f"Generated embeddings for {len(df)} recipes.")
 
     # Connect to Pinecone
     pc = Pinecone(api_key=config.PINECONE_API_KEY)
@@ -45,7 +45,7 @@ def recipe_embedding():
     # Then call it:
     batch_upsert(index, vectors, namespace="recipes-namespace", batch_size=100)
 
-    print(f"📦 Upserted {len(vectors)} vectors to Pinecone.")
+    print(f"Upserted {len(vectors)} vectors to Pinecone.")
 
     # Cleanup
     del model, embeddings, df

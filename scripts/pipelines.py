@@ -20,19 +20,19 @@ def generate_validated_recipe(question, ingredients, recipes, config, max_attemp
             )
             
             if review_result.approved:
-                print("✅ Recipe approved!")
-                return recipe
+                print("Recipe approved!")
+                return recipe, review_result.ingredients_to_buy
             else:
-                print(f"❌ Recipe not approved (ingredients to buy: {review_result.ingredients_to_buy})")
-                print(f"💬 Explanation: {review_result.explanation}")
+                print(f" Recipe not approved (ingredients to buy: {review_result.ingredients_to_buy})")
+                print(f" Explanation: {review_result.explanation}")
                 last_explanation = review_result.explanation
                 attempt += 1
         except Exception as e:
-            print(f"⚠️ Error generating recipe: {e}")
+            print(f" Error generating recipe: {e}")
             attempt += 1
 
-    print("⚠️ Reached max attempts. Proceeding with the last generated recipe.")
-    return recipe
+    print("Reached max attempts. Proceeding with the last generated recipe.")
+    return recipe, review_result.ingredients_to_buy
 
 
 def image_pipeline(recipe: str, config, model, processor, num_iterations=3):

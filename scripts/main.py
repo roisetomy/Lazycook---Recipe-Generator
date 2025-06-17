@@ -16,12 +16,13 @@ def main():
     index = pc.Index("lazycook")
 
     recipes = search_recipes(question, ingredients, index=index, top_k=3)
-    recipe = generate_validated_recipe(question, ingredients, recipes, config)
+    recipe, ingredients_to_buy = generate_validated_recipe(question, ingredients, recipes, config)
 
     print("\nFinal Recipe:")
     print(recipe.title)
     print(recipe.ingredients)
     print(recipe.directions)
+    print(f"Ingredients to buy: {ingredients_to_buy}")
 
     model, processor = load_clip_model(config.CLIP_MODEL, config.DEVICE)
 

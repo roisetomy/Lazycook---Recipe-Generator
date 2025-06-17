@@ -40,7 +40,7 @@ def main():
                 recipes = search_recipes(question, ingredients, index=index, top_k=3)
             
             with st.spinner("Generating your perfect recipe..."):
-                recipe = generate_validated_recipe(question, ingredients, recipes, config)
+                recipe, ingredients_to_buy = generate_validated_recipe(question, ingredients, recipes, config)
             
             # Display recipe
             st.header(recipe.title)
@@ -48,6 +48,11 @@ def main():
             st.subheader("Ingredients:")
             for ingredient in recipe.ingredients:
                 st.write(f"• {ingredient}")
+            
+            if ingredients_to_buy:
+                st.subheader("Shopping List:")
+                for ingredient in ingredients_to_buy:
+                    st.write(f"• {ingredient}")
             
             st.subheader("Directions:")
             for i, step in enumerate(recipe.directions, 1):
