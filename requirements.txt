@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+requests
+torch
+sentence-transformers
+transformers
+Pillow
+python-dotenv
+pinecone-client
+google-generativeai
+qdrant-client
+pydantic
