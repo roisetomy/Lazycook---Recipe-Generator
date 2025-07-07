@@ -1,18 +1,36 @@
-import requests
+"""This file provides functions to interact with an LLM for generating and reviewing recipes
+ based on user input, including seasonal context and ingredient availability."""
 import json
 import re
 from datetime import datetime
-from pydantic import BaseModel, ValidationError
 from typing import List
+import requests
+from pydantic import BaseModel, ValidationError
 from src import config
 from google import genai
 
 class Recipe(BaseModel):
+    """
+    Pydantic class that represents a cooking recipe.
+
+    Attributes:
+        title (str): The name of the recipe.
+        ingredients (List[str]): A list of ingredients required for the recipe.
+        directions (List[str]): Step-by-step cooking instructions.
+    """
     title: str
     ingredients: List[str]
     directions: List[str]
 
 class ReviewResult(BaseModel):
+    """
+    Pydantic class that represents the result of reviewing a generated recipe.
+
+    Attributes:
+        approved (bool): Whether the recipe meets the user's requirements.
+        ingredients_to_buy (List[str]): Ingredients the user does not have and needs to purchase.
+        explanation (str): An explanation of the decision, including suggested improvements.
+    """
     approved: bool
     ingredients_to_buy: List[str]
     explanation: str
@@ -27,16 +45,16 @@ def get_season(date):
     Returns:
         str: Season name ('Spring', 'Summer', 'Autumn', or 'Winter')
     """
-    Y = 2000  # dummy leap year to handle dates like Feb 29
+    year = 2000  # dummy leap year to handle dates like Feb 29
     seasons = {
-        'Spring': (datetime(Y, 3, 20), datetime(Y, 6, 20)),
-        'Summer': (datetime(Y, 6, 21), datetime(Y, 9, 22)),
-        'Autumn': (datetime(Y, 9, 23), datetime(Y, 12, 20)),
-        'Winter': (datetime(Y, 12, 21), datetime(Y + 1, 3, 19))
+        'Spring': (datetime(year, 3, 20), datetime(year, 6, 20)),
+        'Summer': (datetime(year, 6, 21), datetime(year, 9, 22)),
+        'Autumn': (datetime(year, 9, 23), datetime(year, 12, 20)),
+        'Winter': (datetime(year, 12, 21), datetime(year + 1, 3, 19))
     }
 
-    # Replace the year in the current date with Y
-    current = datetime(Y, date.month, date.day)
+    # Replace the year in the current date with year
+    current = datetime(year, date.month, date.day)
     for season, (start, end) in seasons.items():
         if start <= current <= end:
             return season
@@ -54,17 +72,16 @@ def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     Returns:
         str: Comma-separated list of relevant keywords
     """
-    url = config.LLM_API_URL
     headers = {"Content-Type": "application/json"}
-    
+
     # Add seasonal context to the user's question
     current_season = get_season(datetime.now())
     question_with_context = f"{question}, season {current_season}"
 
     data = {
-        "model": config.LLM_MODEL,
+        "model": model,
         "messages": [
-            {"role": "system", "content": """""You are an intelligent recipe query enrichment assistant. Your task is not to answer the user's question, but to think out loud and then output a list of highly relevant keywords related to food, cooking, ingredients, cuisines, or dish types.
+            {"role": "system", "content": """You are an intelligent recipe query enrichment assistant. Your task is not to answer the user's question, but to think out loud and then output a list of highly relevant keywords related to food, cooking, ingredients, cuisines, or dish types.
 
     Begin your answer with a <think> block where you reason about what the user might want, and how to expand their query in a food-related context. Also take into account the current season, which is provided as a hint.
 
@@ -95,13 +112,27 @@ def get_keywords_from_llm(question: str, url: str, model: str) -> str:
     return q_ext
 
 def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict], url: str, model: str, model_big: str, feedback: str = "") -> Recipe:
-    # Set up API call
-    url = config.LLM_API_URL
-    headers = {"Content-Type": "application/json"}
-    
+    """
+    Generate a new recipe using a language model based on a question, ingredients, and top recipes.
+
+    Args:
+        question (str): The user's cooking request.
+        ingredients (str): Ingredients the user has.
+        recipes (List[dict]): Top candidate recipes from the vector database.
+        url (str): API endpoint for the LLM.
+        model (str): Default model identifier.
+        model_big (str): Bigger/more powerful model for use when feedback is provided.
+        feedback (str, optional): Feedback from previous review to guide improvement.
+
+    Returns:
+        Recipe: Parsed and validated recipe object.
+    """
+
+    headers = {"Content-Type": "application/json"}   
     system_prompt = """You are a helpful recipe assistant. Your task is to provide a concise and relevant response based on the user's question and the ingredients they have at home.
     You should return a new recipe based on the user's question and the ingredients they have, using the top recipes from a dataset.
     Do not include any explanations or additional information, just the recipe details in valid JSON format.
+    If the user specifies that he doesn't like a certain ingredient, or is allergic to it, DO NOT INCLUDE IT and replace it with something similar.
 
     Return ONLY a JSON object in this format:
     {
@@ -151,14 +182,21 @@ def generate_recipe_from_llm(question: str, ingredients: str, recipes: List[dict
         print("❌ Error parsing or validating the recipe:\n", e)
         print("🔍 Raw model output:\n", content)
         raise ValueError("Invalid recipe format")
-##
-# Define the expected structure of the model's output
 
 
-# Function to review a recipe
 def review_generated_recipe(question: str, ingredients: str, recipe: Recipe, model: str = "gemini-1.5-flash") -> ReviewResult:
-    # Set up the Gemini client
+    """
+    Review a generated recipe for suitability and provide feedback.
 
+    Args:
+        question (str): Original user question.
+        ingredients (str): Ingredients the user has.
+        recipe (Recipe): The generated recipe to review.
+        model (str, optional): The model to use for review. Defaults to "gemini-1.5-flash".
+
+    Returns:
+        ReviewResult: Structured result indicating approval, missing ingredients, and explanation.
+    """
     client = genai.Client(api_key=config.GOOGLE_API_KEY)
 
     prompt = f"""

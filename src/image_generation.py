@@ -1,9 +1,22 @@
-import requests
-import base64
-from PIL import Image
-from io import BytesIO
+"""This module provides functionality for generating stylized food images using
+natural language prompts and a text-to-image generation API."""
 
-def get_image_prompt_from_llm(recipe: str, url: str, model: str) -> str:
+import base64
+from io import BytesIO
+import requests
+from PIL import Image
+
+def get_image_prompt_from_llm(recipe: str, url: str) -> str:
+    """
+    Generate a stylized image prompt for a dish using a language model.
+
+    Args:
+        recipe (str): Textual description of the recipe or dish.
+        url (str): API endpoint for the language model.
+
+    Returns:
+        str: A cleaned positive prompt string suitable for use with image generation models.
+    """
     headers = {"Content-Type": "application/json"}
 
     system_prompt = """You are a helpful AI Assistant.
@@ -53,6 +66,16 @@ Positive prompt: a watercolor painting of a slice of strawberry cheesecake, crea
 
 
 def create_image_from_prompt(prompt: str, url: str) -> Image.Image:
+    """
+    Generate an image using a text prompt and a text-to-image generation API.
+
+    Args:
+        prompt (str): Text description of the image to generate.
+        url (str): API endpoint of the image generation model.
+
+    Returns:
+        Image.Image: The generated image as a PIL Image object.
+    """
     payload = {
         "prompt": prompt,
         "negative_prompt": "blurry, low resolution, watermarks, text, logo, signature, bad anatomy, bad hands, bad proportions, ugly, duplicate, morbid, mutilated, out of frame, extra digit, fewer digits, cropped, worst quality, low quality",
@@ -75,6 +98,3 @@ def create_image_from_prompt(prompt: str, url: str) -> Image.Image:
     # Display inline in Jupyter
     # display(image)
     return image
-
-
-    
