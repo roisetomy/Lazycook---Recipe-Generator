@@ -4,6 +4,21 @@ from IPython.display import display
 from src.llm_interaction import generate_recipe_from_llm, review_generated_recipe
 
 def generate_validated_recipe(question, ingredients, recipes, config, max_attempts=3):
+    """
+    Generate and validate a recipe using an LLM and a review loop.
+    Attempts to generate a recipe that fits the user's question and available ingredients.
+    If the recipe is not approved by the reviewer, it will try to improve it up to max_attempts times.
+    
+    Args:
+        question (str): User's cooking request or description.
+        ingredients (str): Ingredients the user has at home.
+        recipes (list): List of top similar recipes for context.
+        config: Configuration object with model/API details.
+        max_attempts (int): Maximum number of review/generation attempts.
+    
+    Returns:
+        tuple: (Recipe object, list of ingredients to buy)
+    """
     attempt = 0
     last_explanation = ""
 
@@ -45,7 +60,7 @@ def image_pipeline(recipe: str, config, model, processor, num_iterations=3):
         model: CLIP model for similarity scoring
         processor: CLIP processor for image/text processing
         num_iterations (int): Number of images to generate and compare
-        
+    
     Returns:
         PIL.Image: The best matching image
     """

@@ -8,6 +8,16 @@ from pinecone import Pinecone
 
 
 def recipe_embedding():
+    """
+    Loads recipe data, generates embeddings for each recipe, and upserts them into a Pinecone vector database.
+    Steps:
+    1. Loads and preprocesses the recipe dataset.
+    2. Loads the embedding model and generates embeddings for all recipes.
+    3. Connects to Pinecone and prepares metadata for each recipe.
+    4. Upserts the embeddings and metadata as vectors into the Pinecone index.
+    5. Cleans up resources and empties CUDA cache if needed.
+    """
+
     print("Running embedding and upsert...")
 
     # Load and preprocess data

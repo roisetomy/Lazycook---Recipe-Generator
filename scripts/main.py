@@ -8,6 +8,17 @@ from src.image_evaluation import load_clip_model
 from pinecone import Pinecone
 
 def main():
+    """
+    Command-line entry point for generating and reviewing recipes with LazyCook.
+    
+    Steps:
+    1. Prompts the user for a cooking question and available ingredients.
+    2. Searches for similar recipes using Pinecone and embeddings.
+    3. Generates a new recipe using an LLM, with review and improvement loop.
+    4. Prints the final recipe and shopping list.
+    5. Loads the CLIP model and generates an image for the recipe, displaying the best match.
+    """
+
     question = input("Enter your question: ")
     ingredients = input("Enter ingredients: ")
 
