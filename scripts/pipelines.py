@@ -49,7 +49,7 @@ def image_pipeline(recipe: str, config, model, processor, num_iterations=3):
     Returns:
         PIL.Image: The best matching image
     """
-    prompt = get_image_prompt_from_llm(recipe, config.LLM_API_URL, config.LLM_MODEL)
+    prompt = get_image_prompt_from_llm(recipe, config.LLM_API_URL)
     similarity_scores = []
     images = []
     

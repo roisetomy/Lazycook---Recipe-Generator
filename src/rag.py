@@ -1,10 +1,8 @@
-# src/recipe_search.py
-from .data_processing import load_and_preprocess_data
+import numpy as np
+from pinecone import Pinecone
 from . import config
 from .embedding_utils import load_embedding_model
 from .llm_interaction import get_keywords_from_llm
-from pinecone import Pinecone
-import numpy as np
 
 # Load the embedding model globally
 _model_emb = load_embedding_model(config.EMBEDDING_MODEL, config.DEVICE)
@@ -53,4 +51,3 @@ def search_recipes(query: str, ingredients: str, index: Pinecone, top_k: int = 3
         })
 
     return recipes_for_llm
-

@@ -54,3 +54,7 @@ dist/
 
 # Jupyter runtime
 ~$*
+
+# Ignore package init files 
+**/__init__.py
+**/.gitkeep
