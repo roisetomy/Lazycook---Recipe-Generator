@@ -51,7 +51,12 @@ pip install -r requirements.txt
 cp .env.example .env
 # Then fill in your API keys
 
-# 4. Run the Streamlit app
+# 4. Set up LM Studio & WebUI
+# - Download and install LM Studio: https://lmstudio.ai/
+# - Download a compatible LLM model (e.g., Qwen3-0.3)
+# - Download WebUI and make it accessible via localhost
+
+# 5. Run the Streamlit app
 streamlit run streamlit_app/app_cached.py
 
    ```
